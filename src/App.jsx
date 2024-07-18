@@ -387,11 +387,28 @@ const LivestockApp = () => {
     );
   };
 
-
-
-
-
-
-
+// IndexedDB helper functions
+const initDB = () => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('LivestockDB', 1);
+      request.onerror = (event) => reject("IndexedDB error: " + event.target.error);
+      request.onsuccess = (event) => resolve(event.target.result);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        db.createObjectStore('animals', { keyPath: 'id', autoIncrement: true });
+      };
+    });
+  };
+  
+  const saveAnimals = async (animals) => {
+    const db = await initDB();
+    const transaction = db.transaction(['animals'], 'readwrite');
+    const store = transaction.objectStore('animals');
+    await Promise.all(animals.map(animal => new Promise((resolve, reject) => {
+      const request = store.put(animal);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    })));
+  };
 
 export default LivestockApp;
