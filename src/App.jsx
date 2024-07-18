@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Camera, Users, Syringe, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import './App.css';
@@ -216,7 +216,7 @@ const AnimalDetails = ({ animal, onBack, onAddVaccination }) => {
   );
 };
 
-const LivestockApp = () => {
+const kApp = () => {
   const [animals, setAnimals] = useState([
     { id: 1, name: 'Bessie', tag: 'A001', breed: 'Holstein', gender: 'Female', age: 4, weight: 600, imageUrl: '/api/placeholder/400/300', motherId: null, calves: [3], vaccinations: [] },
     { id: 2, name: 'Spot', tag: 'A002', breed: 'Angus', gender: 'Male', age: 3, weight: 550, imageUrl: '/api/placeholder/400/300', motherId: null, calves: [], vaccinations: [] },
@@ -286,5 +286,112 @@ const LivestockApp = () => {
     </div>
   );
 };
+
+const LivestockApp = () => {
+    const [animals, setAnimals] = useState([
+      { id: 1, name: 'Bessie', tag: 'A001', breed: 'Holstein', gender: 'Female', age: 4, weight: 600, imageUrl: '/api/placeholder/400/300', motherId: null, calves: [3], vaccinations: [] },
+      { id: 2, name: 'Spot', tag: 'A002', breed: 'Angus', gender: 'Male', age: 3, weight: 550, imageUrl: '/api/placeholder/400/300', motherId: null, calves: [], vaccinations: [] },
+      { id: 3, name: 'Daisy', tag: 'A003', breed: 'Holstein', gender: 'Female', age: 0.5, weight: 150, imageUrl: '/api/placeholder/400/300', motherId: 1, calves: [], vaccinations: [] },
+    ]);
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [selectedAnimal, setSelectedAnimal] = useState(null);
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+  
+    useEffect(() => {
+      function onlineHandler() {
+        setIsOnline(true);
+      }
+      function offlineHandler() {
+        setIsOnline(false);
+      }
+      window.addEventListener('online', onlineHandler);
+      window.addEventListener('offline', offlineHandler);
+  
+      // Load animals from localStorage when the component mounts
+      const storedAnimals = localStorage.getItem('animals');
+      if (storedAnimals) {
+        setAnimals(JSON.parse(storedAnimals));
+      }
+  
+      return () => {
+        window.removeEventListener('online', onlineHandler);
+        window.removeEventListener('offline', offlineHandler);
+      };
+    }, []);
+  
+    // Save animals to localStorage whenever the animals state changes
+    useEffect(() => {
+      localStorage.setItem('animals', JSON.stringify(animals));
+    }, [animals]);
+  
+    const handleAddAnimal = (newAnimal) => {
+      const newId = animals.length + 1;
+      const animalWithId = { ...newAnimal, id: newId, vaccinations: [] };
+      setAnimals([...animals, animalWithId]);
+      
+      if (newAnimal.motherId) {
+        setAnimals(prevAnimals => 
+          prevAnimals.map(animal => 
+            animal.id === parseInt(newAnimal.motherId) 
+              ? { ...animal, calves: [...animal.calves, newId] }
+              : animal
+          )
+        );
+      }
+      
+      setShowAddForm(false);
+    };
+  
+    const handleAddVaccination = (animalId, vaccinationData) => {
+      setAnimals(prevAnimals => 
+        prevAnimals.map(animal => 
+          animal.id === animalId 
+            ? { ...animal, vaccinations: [...(animal.vaccinations || []), vaccinationData] }
+            : animal
+        )
+      );
+      setSelectedAnimal(prevAnimal => ({ ...prevAnimal, vaccinations: [...(prevAnimal.vaccinations || []), vaccinationData] }));
+    };
+  
+    return (
+      <div className="app-container">
+        {!isOnline && <div className="offline-message">You are currently offline. Some features may be limited.</div>}
+        <header className="app-header">
+          <h1 className="app-title">Livestock Manager</h1>
+        </header>
+  
+        <main>
+          {showAddForm ? (
+            <AddAnimalForm onAddAnimal={handleAddAnimal} onCancel={() => setShowAddForm(false)} existingAnimals={animals} />
+          ) : selectedAnimal ? (
+            <AnimalDetails 
+              animal={selectedAnimal} 
+              onBack={() => setSelectedAnimal(null)} 
+              onAddVaccination={handleAddVaccination}
+            />
+          ) : (
+            <div className="animal-list">
+              {animals.map(animal => (
+                <AnimalCard key={animal.id} animal={animal} onViewDetails={setSelectedAnimal} />
+              ))}
+            </div>
+          )}
+        </main>
+  
+        {!showAddForm && !selectedAnimal && (
+          <button onClick={() => setShowAddForm(true)} className="add-button">
+            <Plus size={24} />
+          </button>
+        )}
+      </div>
+    );
+  };
+
+
+
+
+
+
+
 
 export default LivestockApp;
